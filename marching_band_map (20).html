@@ -1,0 +1,1892 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高校マーチングバンド解説マップ</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #10B981;
+            --primary-dark: #059669;
+            --secondary: #34D399;
+            --accent: #6EE7B7;
+            --bg: #F0FDF4;
+            --card-bg: #FFFFFF;
+            --text: #064E3B;
+            --text-light: #047857;
+            --text-muted: #6B7280;
+            --overlay: rgba(16, 185, 129, 0.95);
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #map {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .controls-overlay {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 15px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .add-school-btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .add-school-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(16, 185, 129, 0.4);
+        }
+
+        .add-school-btn::before {
+            content: '+';
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .zoom-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .zoom-btn {
+            width: 50px;
+            height: 50px;
+            background: var(--card-bg);
+            border: 2px solid var(--primary);
+            border-radius: 12px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .zoom-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 2.5rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.4s ease-out;
+            border: 3px solid var(--primary);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .modal-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .close-btn:hover {
+            background: var(--bg);
+            color: var(--primary);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg);
+            border: 2px solid #D1FAE5;
+            border-radius: 12px;
+            color: var(--text);
+            font-family: 'Noto Sans JP', sans-serif;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(16, 185, 129, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .password-section {
+            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border: 2px solid #F59E0B;
+        }
+
+        .password-section p {
+            color: #92400E;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: var(--card-bg);
+            color: var(--text);
+            border-radius: 16px;
+            padding: 0;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            border: 3px solid var(--primary);
+            min-width: 280px;
+        }
+
+        .leaflet-popup-content {
+            margin: 0;
+            width: 100% !important;
+        }
+
+        .popup-content {
+            padding: 1.5rem;
+        }
+
+        .popup-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.8rem;
+        }
+
+        .popup-description {
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            line-height: 1.6;
+            font-size: 0.9rem;
+        }
+
+        .popup-thumbnail {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+            object-fit: cover;
+            background: transparent;
+        }
+
+        .popup-thumbnail:hover {
+            transform: scale(1.03);
+            box-shadow: 0 8px 30px rgba(16, 185, 129, 0.3);
+        }
+
+        .leaflet-popup-tip {
+            background: var(--card-bg);
+            border: 3px solid var(--primary);
+            border-top: none;
+            border-right: none;
+        }
+
+        .custom-marker {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+        }
+        
+        /* カスタムクラスターアイコン用の基本スタイル */
+        .custom-cluster-icon {
+            background: transparent !important;
+            border: none !important;
+        }
+        
+        .custom-cluster-icon div {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .custom-cluster-icon div:hover {
+            transform: scale(1.1);
+        }
+        
+        /* マーカーラベル（学校名）のスタイル */
+        .marker-label {
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--primary-dark);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            white-space: nowrap;
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+        
+        .marker-label::before {
+            display: none; /* 矢印を非表示 */
+        }
+        
+        /* 削除モード用のスタイル */
+        .delete-mode-indicator {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 16px;
+            box-shadow: 0 8px 30px rgba(220, 38, 38, 0.5);
+            z-index: 10000;
+            display: none;
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        .delete-mode-indicator.active {
+            display: block;
+        }
+        
+        /* 削除確認モーダル */
+        .delete-confirm-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 20000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .delete-confirm-modal.active {
+            display: flex;
+        }
+        
+        .delete-confirm-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .delete-confirm-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #DC2626;
+            margin-bottom: 15px;
+        }
+        
+        .delete-confirm-message {
+            font-size: 16px;
+            color: #374151;
+            margin-bottom: 25px;
+        }
+        
+        .delete-confirm-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .delete-confirm-btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .delete-confirm-btn.confirm {
+            background: #DC2626;
+            color: white;
+        }
+        
+        .delete-confirm-btn.confirm:hover {
+            background: #991B1B;
+        }
+        
+        .delete-confirm-btn.cancel {
+            background: #E5E7EB;
+            color: #374151;
+        }
+        
+        .delete-confirm-btn.cancel:hover {
+            background: #D1D5DB;
+        }
+        
+        /* パスワード確認モーダル */
+        .password-confirm-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 20000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .password-confirm-modal.active {
+            display: flex;
+        }
+        
+        .password-confirm-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .password-confirm-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #DC2626;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .password-confirm-description {
+            font-size: 14px;
+            color: #6B7280;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .password-confirm-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #E5E7EB;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .password-confirm-input:focus {
+            outline: none;
+            border-color: #DC2626;
+        }
+        
+        .password-confirm-error {
+            color: #DC2626;
+            font-size: 14px;
+            margin-bottom: 15px;
+            display: none;
+            text-align: center;
+        }
+        
+        .password-confirm-error.active {
+            display: block;
+        }
+        
+        .password-confirm-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .password-confirm-btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .password-confirm-btn.confirm {
+            background: #DC2626;
+            color: white;
+        }
+        
+        .password-confirm-btn.confirm:hover {
+            background: #991B1B;
+        }
+        
+        .password-confirm-btn.cancel {
+            background: #E5E7EB;
+            color: #374151;
+        }
+        
+        .password-confirm-btn.cancel:hover {
+            background: #D1D5DB;
+        }
+        
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        /* 削除モード時のマーカースタイル */
+        .delete-mode .custom-marker {
+            background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+            cursor: pointer;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 4px 12px rgba(220, 38, 38, 0.5);
+            }
+            50% {
+                box-shadow: 0 6px 20px rgba(220, 38, 38, 0.8);
+            }
+        }
+
+        /* クラスター内容表示モーダル */
+        .cluster-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 3000;
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cluster-modal.active {
+            display: flex;
+        }
+
+        .cluster-modal-content {
+            background: white;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease-out;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cluster-modal-header {
+            padding: 20px 30px;
+            border-bottom: 2px solid var(--card-bg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cluster-modal-header h3 {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-size: 1.5rem;
+            color: var(--primary-dark);
+            margin: 0;
+        }
+
+        .close-cluster-modal {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: #999;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .close-cluster-modal:hover {
+            background: var(--card-bg);
+            color: var(--primary);
+        }
+
+        .cluster-modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .cluster-school-item {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .cluster-school-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.2);
+        }
+
+        .cluster-school-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--primary-dark);
+            margin-bottom: 8px;
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+
+        .cluster-school-description {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
+        .cluster-school-thumbnail {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .error-message {
+            background: #FEE2E2;
+            border: 2px solid #DC2626;
+            color: #991B1B;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+            display: none;
+            font-weight: 600;
+        }
+
+        .success-message {
+            background: #D1FAE5;
+            border: 2px solid var(--primary);
+            color: var(--primary-dark);
+            padding: 1rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+            display: none;
+            font-weight: 600;
+        }
+
+        .leaflet-control-zoom {
+            display: none !important;
+        }
+        
+        /* フィルタリングボタンとパネル */
+        .filter-overlay {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+        
+        /* ロゴ（ホームボタン） */
+        .logo-home {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .logo-home:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .logo-home img {
+            display: block;
+            height: 60px;
+            width: auto;
+        }
+        
+        /* ホームに戻るときの白フラッシュ */
+        .white-flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 9999;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .white-flash.active {
+            opacity: 1;
+        }
+        
+        .filter-btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .filter-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(16, 185, 129, 0.4);
+        }
+        
+        .filter-btn::before {
+            content: '🔍';
+            font-size: 1.2rem;
+        }
+        
+        .filter-panel {
+            position: absolute;
+            bottom: 70px;
+            left: 0;
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            min-width: 250px;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .filter-panel.active {
+            display: block;
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .filter-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary);
+        }
+        
+        .filter-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-item:hover {
+            background: #F0FDF4;
+        }
+        
+        .filter-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--primary);
+            border-radius: 6px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-item.active .filter-checkbox {
+            background: var(--primary);
+        }
+        
+        .filter-checkbox::after {
+            content: '✓';
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .filter-item.active .filter-checkbox::after {
+            display: block;
+        }
+        
+        .filter-label {
+            font-size: 15px;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .filter-count {
+            margin-left: auto;
+            font-size: 13px;
+            color: #9CA3AF;
+            font-weight: 600;
+        }
+        
+        .filter-clear-btn {
+            width: 100%;
+            padding: 10px;
+            background: #F3F4F6;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #6B7280;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-clear-btn:hover {
+            background: #E5E7EB;
+        }
+
+        @media (max-width: 768px) {
+            .controls-overlay {
+                top: 10px;
+                left: 10px;
+                gap: 10px;
+            }
+
+            .add-school-btn {
+                padding: 12px 20px;
+                font-size: 0.9rem;
+            }
+
+            .zoom-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 1.3rem;
+            }
+
+            .modal-content {
+                padding: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 白フラッシュエフェクト -->
+    <div id="whiteFlash" class="white-flash"></div>
+
+    <!-- ロゴ（ホームボタン） -->
+    <div class="logo-home" id="logoHome">
+        <img src="logo.png" alt="CJMBチャンネル">
+    </div>
+
+    <!-- 削除モードインジケーター -->
+    <div id="deleteModeIndicator" class="delete-mode-indicator">
+        🗑️ 削除モード有効 - ピンをクリックして削除 (Ctrl+Shift+Dで終了)
+    </div>
+
+    <!-- パスワード確認モーダル -->
+    <div id="passwordConfirmModal" class="password-confirm-modal">
+        <div class="password-confirm-content">
+            <div class="password-confirm-title">🔐 削除モード</div>
+            <div class="password-confirm-description">削除モードを有効にするには管理者パスワードを入力してください</div>
+            <input type="password" id="passwordConfirmInput" class="password-confirm-input" placeholder="パスワードを入力">
+            <div id="passwordConfirmError" class="password-confirm-error">パスワードが正しくありません</div>
+            <div class="password-confirm-buttons">
+                <button class="password-confirm-btn cancel" id="passwordCancelBtn">キャンセル</button>
+                <button class="password-confirm-btn confirm" id="passwordConfirmBtn">確認</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 削除確認モーダル -->
+    <div id="deleteConfirmModal" class="delete-confirm-modal">
+        <div class="delete-confirm-content">
+            <div class="delete-confirm-title">⚠️ 削除確認</div>
+            <div class="delete-confirm-message" id="deleteConfirmMessage"></div>
+            <div class="delete-confirm-buttons">
+                <button class="delete-confirm-btn cancel" id="deleteCancelBtn">キャンセル</button>
+                <button class="delete-confirm-btn confirm" id="deleteConfirmBtn">削除する</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="controls-overlay">
+        <div class="zoom-controls">
+            <button class="zoom-btn" id="zoomIn">+</button>
+            <button class="zoom-btn" id="zoomOut">−</button>
+        </div>
+    </div>
+
+    <!-- フィルタリングボタン -->
+    <div class="filter-overlay">
+        <button class="filter-btn" id="filterBtn">フィルター</button>
+        <div class="filter-panel" id="filterPanel">
+            <div class="filter-title">タグでフィルター</div>
+            <div id="filterList"></div>
+            <button class="filter-clear-btn" id="filterClearBtn">すべて表示</button>
+        </div>
+    </div>
+
+    <div class="modal" id="addSchoolModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">高校を追加</h2>
+                <button class="close-btn" id="closeModal">×</button>
+            </div>
+
+            <div class="password-section">
+                <p>🔒 管理者専用機能</p>
+                <div class="form-group">
+                    <label for="password">パスワード *</label>
+                    <input type="password" id="password" required placeholder="管理者パスワードを入力">
+                </div>
+            </div>
+
+            <form id="schoolForm">
+                <div class="form-group">
+                    <label for="schoolName">高校の名前 *</label>
+                    <input type="text" id="schoolName" required placeholder="例: 〇〇高等学校">
+                </div>
+                
+                <div class="form-group">
+                    <label for="coordinates">座標 (緯度, 経度) *</label>
+                    <input type="text" id="coordinates" required placeholder="例: 34.648410, 134.991000">
+                    <small style="color: #666; font-size: 0.85rem; margin-top: 5px; display: block;">Google Mapで右クリック→座標をコピーして貼り付け</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="schoolDescription">軽い紹介文 *</label>
+                    <textarea id="schoolDescription" required placeholder="この高校の特徴や魅力を書いてください..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="schoolTags">タグ</label>
+                    <input type="text" id="schoolTags" placeholder="例: 私立,女子校,吹奏楽部">
+                    <small style="color: #666; font-size: 0.85rem; margin-top: 5px; display: block;">カンマ（,）で区切って入力してください</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="youtubeUrl">YouTubeリンク *</label>
+                    <input type="url" id="youtubeUrl" required placeholder="https://www.youtube.com/watch?v=...">
+                </div>
+                
+                <button type="button" class="submit-btn">登録する</button>
+
+                <div class="error-message" id="errorMessage"></div>
+                <div class="success-message" id="successMessage"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- クラスター内容表示モーダル -->
+    <div class="cluster-modal" id="clusterModal">
+        <div class="cluster-modal-content">
+            <div class="cluster-modal-header">
+                <h3 id="clusterTitle">この地域の高校</h3>
+                <button class="close-cluster-modal" id="closeClusterModal">×</button>
+            </div>
+            <div class="cluster-modal-body" id="clusterList">
+                <!-- ピンのリストがここに表示される -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+    
+    <script>
+        // 管理者パスワード
+        const ADMIN_PASSWORD = '114514';
+        
+        // グローバル変数
+        let map;
+        let schools = [];
+        let customIcon;
+        let markerCluster; // クラスターグループを追加
+        let activeFilters = []; // アクティブなフィルター
+
+        // 地図の初期化
+        // 地図の初期化
+        function initMap() {
+            console.log('地図を初期化中...');
+            
+            // localStorageから学校データを読み込み
+            try {
+                schools = JSON.parse(localStorage.getItem('marchingBandSchools') || '[]');
+            } catch (e) {
+                schools = [];
+            }
+            
+            // カスタムマーカーアイコンを作成（丸型に変更）
+            customIcon = L.divIcon({
+                className: 'custom-marker',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            });
+            
+            // 日本の境界を定義
+            const japanBounds = L.latLngBounds(
+                L.latLng(24, 123),  // 南西の角（沖縄付近）
+                L.latLng(46, 146)   // 北東の角（北海道付近）
+            );
+            
+            // 地図を作成
+            map = L.map('map', {
+                zoomControl: false,
+                preferCanvas: true,
+                maxBounds: japanBounds,  // 日本の範囲に制限
+                maxBoundsViscosity: 0.8  // 境界の粘性（0-1、1で完全に制限）
+            }).setView([36.5, 138], 5);
+
+            // タイルレイヤーを追加
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18,
+                minZoom: 5  // 最小ズームを5に変更
+            }).addTo(map);
+            
+            // マーカークラスターグループを作成
+            markerCluster = L.markerClusterGroup({
+                maxClusterRadius: function(zoom) {
+                    // ズームレベルに応じてクラスター範囲を動的に変更
+                    if (zoom >= 16) return 0;    // ズーム16以上: クラスタリング無効
+                    if (zoom >= 14) return 30;   // ズーム14-15: 30px以内
+                    if (zoom >= 12) return 60;   // ズーム12-13: 60px以内
+                    if (zoom >= 10) return 100;  // ズーム10-11: 100px以内
+                    return 150;                  // ズーム9以下: 150px以内
+                },
+                spiderfyOnMaxZoom: false,
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: false, // 自動ズームを無効化（手動で制御）
+                animate: true,
+                animateAddingMarkers: true,
+                removeOutsideVisibleBounds: true,
+                iconCreateFunction: function(cluster) {
+                    const count = cluster.getChildCount();
+                    const size = 50;
+                    
+                    return L.divIcon({
+                        html: `<div style="
+                            width: ${size}px;
+                            height: ${size}px;
+                            background: white;
+                            border: 4px solid #10B981;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 16px;
+                            font-weight: 700;
+                            color: #059669;
+                            font-family: 'Montserrat', sans-serif;
+                            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+                        ">${count}</div>`,
+                        className: 'custom-cluster-icon',
+                        iconSize: L.point(size, size)
+                    });
+                }
+            });
+            
+            // クラスタークリック時のカスタム処理
+            let zoomCount = 0;
+            markerCluster.on('clusterclick', function(a) {
+                const cluster = a.layer;
+                const childMarkers = cluster.getAllChildMarkers();
+                
+                // 子マーカーが1つだけの場合はポップアップを開く
+                if (childMarkers.length === 1) {
+                    childMarkers[0].openPopup();
+                    return;
+                }
+                
+                // クラスター内の全てのマーカーの境界を取得
+                const bounds = cluster.getBounds();
+                
+                // 境界に合わせてズームとパンを実行
+                // paddingを設定して全てのピンが見えるようにする
+                map.fitBounds(bounds, {
+                    padding: [50, 50], // 上下左右に50pxの余白
+                    maxZoom: 18,       // 最大ズームを制限
+                    animate: true,
+                    duration: 0.5
+                });
+            });
+            
+            // ズームが変更されたらカウンターをリセット
+            map.on('zoomend', function() {
+                const currentZoom = map.getZoom();
+                if (currentZoom >= 16) {
+                    zoomCount = 0;
+                }
+            });
+            
+            map.addLayer(markerCluster);
+
+            console.log('地図の初期化完了');
+
+            // 保存された学校を地図に表示
+            schools.forEach(school => {
+                addMarkerToMap(school);
+            });
+            
+            // イベントリスナーを設定
+            setupEventListeners();
+        }
+
+        // YouTube動画IDを取得
+        function getYouTubeID(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+
+        // YouTubeサムネイルURLを取得
+        function getYouTubeThumbnail(videoId) {
+            return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        }
+
+        // 住所から座標を取得
+        async function geocodeAddress(address) {
+            try {
+                console.log('ジオコーディングAPI呼び出し:', address);
+                
+                // 郵便番号と「〒」記号を削除
+                const cleanAddress = address.replace(/〒?\d{3}-?\d{4}\s*/g, '').trim();
+                console.log('クリーンアップした住所:', cleanAddress);
+                
+                const url = `https://geolonia.github.io/japanese-addresses/api/ja/${encodeURIComponent(cleanAddress)}.json`;
+                console.log('リクエストURL:', url);
+                
+                const response = await fetch(url);
+                console.log('レスポンスステータス:', response.status);
+                
+                if (!response.ok) {
+                    console.log('APIエラー、Nominatimにフォールバック');
+                    // フォールバック: Nominatimを試す
+                    return await geocodeWithNominatim(cleanAddress);
+                }
+                
+                const data = await response.json();
+                console.log('ジオコーディング結果:', data);
+                
+                if (data && data.geometry && data.geometry.coordinates) {
+                    const coords = {
+                        lat: data.geometry.coordinates[1],
+                        lng: data.geometry.coordinates[0]
+                    };
+                    console.log('座標取得成功:', coords);
+                    return coords;
+                }
+                
+                console.log('結果が見つかりませんでした');
+                return null;
+            } catch (error) {
+                console.error('ジオコーディングエラー:', error);
+                return null;
+            }
+        }
+        
+        // Nominatimでのジオコーディング（フォールバック用）
+        async function geocodeWithNominatim(address) {
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=jp&limit=1`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    return {
+                        lat: parseFloat(data[0].lat),
+                        lng: parseFloat(data[0].lon)
+                    };
+                }
+                return null;
+            } catch (error) {
+                console.error('Nominatimエラー:', error);
+                return null;
+            }
+        }
+
+        // マーカーを地図に追加
+        function addMarkerToMap(school) {
+            const marker = L.marker([school.lat, school.lng], { icon: customIcon });
+            
+            // マーカーにschoolデータを保存
+            marker.schoolData = school;
+            
+            const videoId = getYouTubeID(school.youtubeUrl);
+            const thumbnailUrl = videoId ? getYouTubeThumbnail(videoId) : '';
+            
+            console.log('YouTube動画ID:', videoId);
+            console.log('サムネイルURL:', thumbnailUrl);
+            
+            const popupContent = `
+                <div class="popup-content">
+                    <div class="popup-title">${school.name}</div>
+                    ${school.tags && school.tags.length > 0 ? `
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; margin-bottom: 10px;">
+                            ${school.tags.map(tag => `
+                                <span style="
+                                    background: #F0FDF4;
+                                    color: #059669;
+                                    padding: 4px 10px;
+                                    border-radius: 12px;
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    border: 1px solid #10B981;
+                                ">${tag}</span>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    <div class="popup-description">${school.description}</div>
+                    ${thumbnailUrl ? `
+                        <a href="${school.youtubeUrl}" target="_blank" rel="noopener noreferrer" style="display: block; margin-top: 10px;">
+                            <img src="${thumbnailUrl}" alt="YouTube動画" class="popup-thumbnail">
+                        </a>
+                    ` : `
+                        <a href="${school.youtubeUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: none; display: block; margin-top: 10px;">
+                            📺 YouTube動画を見る →
+                        </a>
+                    `}
+                </div>
+            `;
+            
+            marker.bindPopup(popupContent, {
+                maxWidth: 300,
+                className: 'custom-popup',
+                autoClose: true,
+                closeOnClick: true
+            });
+            
+            // ピンの下に学校名を表示（常時表示のツールチップ）
+            marker.bindTooltip(school.name, {
+                permanent: true,
+                direction: 'bottom',
+                offset: [0, 10],
+                className: 'marker-label'
+            });
+            
+            // マーカークリック時の削除モード対応
+            marker.on('click', function(e) {
+                console.log('マーカークリック検出');
+                const deleteMode = document.body.classList.contains('delete-mode');
+                console.log('削除モード状態:', deleteMode);
+                
+                if (deleteMode) {
+                    // イベント伝播を完全に停止
+                    if (e.originalEvent) {
+                        e.originalEvent.preventDefault();
+                        e.originalEvent.stopPropagation();
+                    }
+                    
+                    // ポップアップを開かないようにする
+                    marker.closePopup();
+                    
+                    console.log('削除確認モーダルを表示します');
+                    
+                    // カスタム削除確認モーダルを表示
+                    showDeleteConfirmModal(school, marker);
+                    
+                    return false;
+                }
+            });
+            
+            // クラスターグループに追加
+            markerCluster.addLayer(marker);
+        }
+
+        // 削除確認モーダルを表示
+        function showDeleteConfirmModal(school, marker) {
+            const modal = document.getElementById('deleteConfirmModal');
+            const message = document.getElementById('deleteConfirmMessage');
+            const confirmBtn = document.getElementById('deleteConfirmBtn');
+            const cancelBtn = document.getElementById('deleteCancelBtn');
+            
+            message.textContent = `「${school.name}」を削除しますか？`;
+            modal.classList.add('active');
+            
+            // 既存のイベントリスナーを削除
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+            
+            // 削除確定ボタン
+            newConfirmBtn.addEventListener('click', () => {
+                console.log('削除処理開始');
+                
+                console.log('削除処理開始');
+                
+                // schoolsから削除
+                const index = schools.findIndex(s => 
+                    s.lat === school.lat && 
+                    s.lng === school.lng && 
+                    s.name === school.name
+                );
+                
+                console.log('削除対象インデックス:', index);
+                
+                if (index > -1) {
+                    schools.splice(index, 1);
+                    localStorage.setItem('marchingBandSchools', JSON.stringify(schools));
+                    console.log('削除完了:', school.name);
+                    
+                    // マーカーを地図から削除
+                    markerCluster.removeLayer(marker);
+                    console.log('マーカーを地図から削除しました');
+                } else {
+                    console.log('削除対象が見つかりませんでした');
+                }
+                
+                modal.classList.remove('active');
+            });
+            
+            // キャンセルボタン
+            newCancelBtn.addEventListener('click', () => {
+                console.log('削除キャンセル');
+                modal.classList.remove('active');
+            });
+            
+            // 背景クリックで閉じる
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    console.log('削除キャンセル（背景クリック）');
+                    modal.classList.remove('active');
+                }
+            });
+        }
+
+        // すべてのタグを取得
+        function getAllTags() {
+            const tagsSet = new Set();
+            schools.forEach(school => {
+                if (school.tags && Array.isArray(school.tags)) {
+                    school.tags.forEach(tag => tagsSet.add(tag));
+                }
+            });
+            return Array.from(tagsSet).sort();
+        }
+        
+        // タグごとの学校数を取得
+        function getSchoolCountByTag(tag) {
+            return schools.filter(school => 
+                school.tags && school.tags.includes(tag)
+            ).length;
+        }
+        
+        // フィルターパネルを更新
+        function updateFilterPanel() {
+            const filterList = document.getElementById('filterList');
+            const allTags = getAllTags();
+            
+            if (allTags.length === 0) {
+                filterList.innerHTML = '<div style="color: #9CA3AF; text-align: center; padding: 20px;">タグが登録されていません</div>';
+                return;
+            }
+            
+            filterList.innerHTML = '';
+            
+            allTags.forEach(tag => {
+                const count = getSchoolCountByTag(tag);
+                const isActive = activeFilters.includes(tag);
+                
+                const filterItem = document.createElement('div');
+                filterItem.className = 'filter-item' + (isActive ? ' active' : '');
+                filterItem.innerHTML = `
+                    <div class="filter-checkbox"></div>
+                    <div class="filter-label">${tag}</div>
+                    <div class="filter-count">${count}</div>
+                `;
+                
+                filterItem.addEventListener('click', (e) => {
+                    e.stopPropagation(); // イベント伝播を停止してパネルが閉じないようにする
+                    toggleFilter(tag);
+                });
+                
+                filterList.appendChild(filterItem);
+            });
+        }
+        
+        // フィルターの切り替え
+        function toggleFilter(tag) {
+            const index = activeFilters.indexOf(tag);
+            
+            if (index > -1) {
+                // フィルター解除
+                activeFilters.splice(index, 1);
+            } else {
+                // フィルター追加
+                activeFilters.push(tag);
+            }
+            
+            updateFilterPanel();
+            applyFilters();
+        }
+        
+        // フィルターを適用
+        function applyFilters() {
+            // クラスターをクリア
+            markerCluster.clearLayers();
+            
+            // フィルター条件に合う学校を地図に表示
+            schools.forEach(school => {
+                // フィルターがアクティブでない場合はすべて表示
+                if (activeFilters.length === 0) {
+                    addMarkerToMap(school);
+                } else {
+                    // 学校のタグがアクティブフィルターのいずれかに一致する場合のみ表示
+                    if (school.tags && school.tags.some(tag => activeFilters.includes(tag))) {
+                        addMarkerToMap(school);
+                    }
+                }
+            });
+            
+            console.log('フィルター適用:', activeFilters);
+        }
+
+        // フォームリセット
+        function resetForm() {
+            const schoolForm = document.getElementById('schoolForm');
+            const errorMsg = document.getElementById('errorMessage');
+            const successMsg = document.getElementById('successMessage');
+            
+            schoolForm.reset();
+            document.getElementById('password').value = '';
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+        }
+
+        // クラスターモーダルを表示
+        function showClusterModal(markers, clusterLatLng) {
+            const modal = document.getElementById('clusterModal');
+            const title = document.getElementById('clusterTitle');
+            const listContainer = document.getElementById('clusterList');
+            
+            title.textContent = `この地域の高校（${markers.length}校）`;
+            
+            // リストをクリア
+            listContainer.innerHTML = '';
+            
+            // 各マーカーの学校情報を表示
+            markers.forEach(marker => {
+                const school = schools.find(s => 
+                    s.lat === marker.getLatLng().lat && 
+                    s.lng === marker.getLatLng().lng
+                );
+                
+                if (!school) return;
+                
+                const videoId = getYouTubeID(school.youtubeUrl);
+                const thumbnailUrl = videoId ? getYouTubeThumbnail(videoId) : '';
+                
+                const item = document.createElement('div');
+                item.className = 'cluster-school-item';
+                item.innerHTML = `
+                    <div class="cluster-school-name">${school.name}</div>
+                    <div class="cluster-school-description">${school.description}</div>
+                    ${thumbnailUrl ? `<img src="${thumbnailUrl}" class="cluster-school-thumbnail" alt="${school.name}">` : ''}
+                `;
+                
+                // クリックでマーカーに移動してポップアップを開く
+                item.addEventListener('click', () => {
+                    modal.classList.remove('active');
+                    map.setView([school.lat, school.lng], 17, { animate: true });
+                    setTimeout(() => {
+                        marker.openPopup();
+                    }, 500);
+                });
+                
+                listContainer.appendChild(item);
+            });
+            
+            modal.classList.add('active');
+        }
+
+        // クラスターモーダルを閉じる
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('clusterModal');
+            const closeBtn = document.getElementById('closeClusterModal');
+            
+            closeBtn.addEventListener('click', () => {
+                modal.classList.remove('active');
+            });
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+
+        // イベントリスナーを設定
+        function setupEventListeners() {
+            const modal = document.getElementById('addSchoolModal');
+            const closeModalBtn = document.getElementById('closeModal');
+            const schoolForm = document.getElementById('schoolForm');
+            const errorMsg = document.getElementById('errorMessage');
+            const successMsg = document.getElementById('successMessage');
+
+            console.log('モーダル:', modal);
+            console.log('フォーム:', schoolForm);
+            console.log('エラーメッセージ:', errorMsg);
+            console.log('成功メッセージ:', successMsg);
+
+            // ロゴクリックでホームに戻る
+            const logoHome = document.getElementById('logoHome');
+            const whiteFlash = document.getElementById('whiteFlash');
+            
+            logoHome.addEventListener('click', () => {
+                // 白フラッシュエフェクト
+                whiteFlash.classList.add('active');
+                
+                setTimeout(() => {
+                    // 地図を初期位置に戻す
+                    map.setView([36.5, 138], 5, {
+                        animate: true,
+                        duration: 1
+                    });
+                    
+                    // フラッシュを消す
+                    setTimeout(() => {
+                        whiteFlash.classList.remove('active');
+                    }, 150);
+                }, 150);
+            });
+
+            // 削除モードの状態管理
+            let deleteMode = false;
+            const deleteModeIndicator = document.getElementById('deleteModeIndicator');
+            const passwordConfirmModal = document.getElementById('passwordConfirmModal');
+            const passwordConfirmInput = document.getElementById('passwordConfirmInput');
+            const passwordConfirmError = document.getElementById('passwordConfirmError');
+            const passwordConfirmBtn = document.getElementById('passwordConfirmBtn');
+            const passwordCancelBtn = document.getElementById('passwordCancelBtn');
+
+            // パスワード確認モーダルを表示
+            function showPasswordConfirmModal() {
+                passwordConfirmModal.classList.add('active');
+                passwordConfirmInput.value = '';
+                passwordConfirmError.classList.remove('active');
+                passwordConfirmInput.focus();
+            }
+
+            // パスワード確認モーダルを閉じる
+            function closePasswordConfirmModal() {
+                passwordConfirmModal.classList.remove('active');
+                passwordConfirmInput.value = '';
+                passwordConfirmError.classList.remove('active');
+            }
+
+            // パスワード確認ボタン
+            passwordConfirmBtn.addEventListener('click', () => {
+                const password = passwordConfirmInput.value;
+                
+                if (password === ADMIN_PASSWORD) {
+                    // パスワード正解で削除モードON
+                    deleteMode = true;
+                    deleteModeIndicator.classList.add('active');
+                    document.body.classList.add('delete-mode');
+                    console.log('削除モード: ON');
+                    closePasswordConfirmModal();
+                } else {
+                    // パスワード不正解
+                    passwordConfirmError.classList.add('active');
+                    passwordConfirmInput.value = '';
+                    passwordConfirmInput.focus();
+                    console.log('削除モード: パスワードエラー');
+                }
+            });
+
+            // パスワードキャンセルボタン
+            passwordCancelBtn.addEventListener('click', () => {
+                closePasswordConfirmModal();
+                console.log('削除モード: キャンセル');
+            });
+
+            // Enterキーでパスワード確認
+            passwordConfirmInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    passwordConfirmBtn.click();
+                }
+            });
+
+            // 背景クリックで閉じる
+            passwordConfirmModal.addEventListener('click', (e) => {
+                if (e.target === passwordConfirmModal) {
+                    closePasswordConfirmModal();
+                }
+            });
+
+            // Ctrl+Shift+A ショートカットキーでモーダルを開く
+            // Ctrl+Shift+D ショートカットキーで削除モードを切り替え
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+                    e.preventDefault();
+                    modal.classList.add('active');
+                }
+                
+                if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                    e.preventDefault();
+                    
+                    // 削除モードをONにする場合はパスワード確認
+                    if (!deleteMode) {
+                        showPasswordConfirmModal();
+                    } else {
+                        // 削除モードOFF（パスワード不要）
+                        deleteMode = false;
+                        deleteModeIndicator.classList.remove('active');
+                        document.body.classList.remove('delete-mode');
+                        console.log('削除モード: OFF');
+                    }
+                }
+            });
+
+            // モーダル操作
+            closeModalBtn.addEventListener('click', () => {
+                modal.classList.remove('active');
+                resetForm();
+            });
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    resetForm();
+                }
+            });
+
+            // ズームボタン
+            document.getElementById('zoomIn').addEventListener('click', () => {
+                map.zoomIn();
+            });
+
+            document.getElementById('zoomOut').addEventListener('click', () => {
+                map.zoomOut();
+            });
+
+            // フィルターボタン
+            const filterBtn = document.getElementById('filterBtn');
+            const filterPanel = document.getElementById('filterPanel');
+            const filterClearBtn = document.getElementById('filterClearBtn');
+            
+            filterBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // イベント伝播を停止
+                filterPanel.classList.toggle('active');
+                updateFilterPanel();
+            });
+            
+            // フィルタークリアボタン
+            filterClearBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // イベント伝播を停止
+                activeFilters = [];
+                updateFilterPanel();
+                applyFilters();
+            });
+            
+            // パネル外をクリックしたら閉じる
+            document.addEventListener('click', (e) => {
+                if (!filterBtn.contains(e.target) && !filterPanel.contains(e.target)) {
+                    filterPanel.classList.remove('active');
+                }
+            });
+
+            // 登録ボタンのクリックイベント
+            const submitBtn = document.querySelector('.submit-btn');
+            console.log('登録ボタン:', submitBtn);
+            
+            submitBtn.addEventListener('click', async (e) => {
+                console.log('登録ボタンがクリックされました');
+                
+                errorMsg.style.display = 'none';
+                successMsg.style.display = 'none';
+                
+                // パスワード検証
+                const password = document.getElementById('password').value;
+                if (password !== ADMIN_PASSWORD) {
+                    errorMsg.textContent = 'パスワードが正しくありません';
+                    errorMsg.style.display = 'block';
+                    console.log('パスワードエラー');
+                    return;
+                }
+                
+                const name = document.getElementById('schoolName').value.trim();
+                const coordinatesInput = document.getElementById('coordinates').value.trim();
+                const description = document.getElementById('schoolDescription').value.trim();
+                const tagsInput = document.getElementById('schoolTags').value.trim();
+                const youtubeUrl = document.getElementById('youtubeUrl').value.trim();
+                
+                // タグを配列に分割（カンマで区切る）
+                const tags = tagsInput ? tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
+                
+                console.log('入力データ:', { name, coordinatesInput, description, tags, youtubeUrl });
+                
+                // 座標を分離（カンマ、スペース、タブなどで区切られている場合に対応）
+                const coordParts = coordinatesInput.split(/[,\s]+/).filter(p => p.length > 0);
+                
+                if (coordParts.length < 2) {
+                    errorMsg.textContent = '座標は「緯度, 経度」の形式で入力してください（例: 34.648410, 134.991000）';
+                    errorMsg.style.display = 'block';
+                    console.log('座標フォーマットエラー:', coordParts);
+                    return;
+                }
+                
+                // 緯度が1番目、経度が2番目
+                const lat = parseFloat(coordParts[0]);
+                const lng = parseFloat(coordParts[1]);
+                
+                console.log('分離した座標:', { lat, lng });
+                
+                if (isNaN(lat) || isNaN(lng)) {
+                    errorMsg.textContent = '緯度・経度は数値で入力してください';
+                    errorMsg.style.display = 'block';
+                    console.log('座標数値エラー');
+                    return;
+                }
+                
+                if (lat < 24 || lat > 46 || lng < 123 || lng > 146) {
+                    errorMsg.textContent = '座標が日本の範囲外です。正しい座標を入力してください';
+                    errorMsg.style.display = 'block';
+                    console.log('座標範囲エラー');
+                    return;
+                }
+                
+                // YouTube URLの検証
+                if (!getYouTubeID(youtubeUrl)) {
+                    errorMsg.textContent = '有効なYouTube URLを入力してください';
+                    errorMsg.style.display = 'block';
+                    console.log('YouTube URLエラー');
+                    return;
+                }
+                
+                // 学校データを作成
+                const school = {
+                    name,
+                    lat,
+                    lng,
+                    description,
+                    tags,
+                    youtubeUrl,
+                    createdAt: new Date().toISOString()
+                };
+                
+                console.log('学校データ作成:', school);
+                
+                // データを保存
+                schools.push(school);
+                localStorage.setItem('marchingBandSchools', JSON.stringify(schools));
+                console.log('ローカルストレージに保存完了');
+                
+                // マーカーを追加
+                addMarkerToMap(school);
+                console.log('マーカー追加完了');
+                
+                // フィルターパネルを更新
+                updateFilterPanel();
+                
+                // 地図をその位置に移動
+                map.setView([lat, lng], 12);
+                
+                // 成功メッセージ
+                successMsg.textContent = `${name}を登録しました！`;
+                successMsg.style.display = 'block';
+                console.log('登録完了');
+                
+                setTimeout(() => {
+                    modal.classList.remove('active');
+                    resetForm();
+                }, 2000);
+            });
+
+        }
+        // ページ読み込み時に地図を初期化
+        window.addEventListener('load', function() {
+            console.log('ページ読み込み完了');
+            setTimeout(initMap, 100);
+        });
+    </script>
+</body>
+</html>
